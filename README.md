@@ -478,4 +478,7 @@ The configuration supports:
 - Consistent development and deployment environments.
 - Simplified application startup and management.
 
+## Live Links
+* **Live Application:** https://join-easy-zeta.vercel.app/login
+* **Demo Video:** https://drive.google.com/file/d/10j1gnIyj0HpYv44efZvcQiLNpatzeO4b/view?usp=sharing
 ---
