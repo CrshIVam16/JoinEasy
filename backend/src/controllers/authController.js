@@ -72,8 +72,8 @@ export async function register(req, res) {
   if (password.length < PASSWORD_MIN_LENGTH) {
     throw new HttpError(400, `password must be at least ${PASSWORD_MIN_LENGTH} characters`);
   }
-  if (!['student', 'admin'].includes(role)) {
-    throw new HttpError(400, "role must be either 'student' or 'admin'");
+  if (!['student', 'professor', 'admin'].includes(role)) {
+    throw new HttpError(400, "role must be 'student', 'professor', or 'admin'");
   }
 
   const passwordHash = await bcrypt.hash(password, 12);

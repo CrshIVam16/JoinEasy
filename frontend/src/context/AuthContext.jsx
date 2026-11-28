@@ -3,6 +3,17 @@ import api from '../api/axios.js';
 
 const AuthContext = createContext(null);
 
+export function dashboardPathForRole(role) {
+  if (role === 'student') return '/student';
+  if (role === 'professor') return '/professor';
+  if (role === 'admin') return '/admin';
+  return '/login';
+}
+
+function isSupportedRole(role) {
+  return ['student', 'professor', 'admin'].includes(role);
+}
+
 function readStoredUser() {
   try {
     const stored = localStorage.getItem('joineazy.user');
@@ -19,6 +30,9 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   const persistSession = useCallback((session) => {
+    if (!session?.token || !session.user?.id || !isSupportedRole(session.user.role)) {
+      throw new Error('The server returned an invalid session.');
+    }
     localStorage.setItem('joineazy.token', session.token);
     localStorage.setItem('joineazy.user', JSON.stringify(session.user));
     setToken(session.token);

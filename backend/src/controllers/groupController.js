@@ -6,7 +6,9 @@ export async function createGroup(req, res) {
   const name = requiredString(req.body?.name, 'name', { max: 120 });
   const group = await withTransaction(async (client) => {
     const { rows } = await client.query(
-      'INSERT INTO groups (name, created_by) VALUES ($1, $2) RETURNING id, name, created_by, created_at',
+      `INSERT INTO groups (name, created_by, leader_id)
+       VALUES ($1, $2, $2)
+       RETURNING id, name, created_by, leader_id, created_at`,
       [name, req.user.id],
     );
     const createdGroup = rows[0];
@@ -28,7 +30,7 @@ export async function createGroup(req, res) {
 
 export async function listMyGroups(req, res) {
   const { rows } = await query(
-    `SELECT g.id, g.name, g.created_by, g.created_at,
+    `SELECT g.id, g.name, g.created_by, g.leader_id, g.created_at,
        COALESCE(
          json_agg(json_build_object(
            'id', u.id, 'name', u.name, 'email', u.email, 'student_code', u.student_code
@@ -47,7 +49,7 @@ export async function listMyGroups(req, res) {
 
 export async function listAllGroups(req, res) {
   const { rows } = await query(
-    `SELECT g.id, g.name, g.created_by, g.created_at,
+    `SELECT g.id, g.name, g.created_by, g.leader_id, g.created_at,
        COUNT(DISTINCT gm.user_id)::int AS member_count,
        COALESCE(
          json_agg(json_build_object(
@@ -111,17 +113,54 @@ export async function addMember(req, res) {
   return res.status(201).json({ message: 'Student added to group', member: users[0] });
 }
 
+export async function transferLeadership(req, res) {
+  const groupId = validUuid(req.params.groupId, 'groupId');
+  const leaderId = validUuid(req.body?.leader_id, 'leader_id');
+
+  const group = await withTransaction(async (client) => {
+    const { rows } = await client.query(
+      'SELECT id, created_by, leader_id FROM groups WHERE id = $1 FOR UPDATE',
+      [groupId],
+    );
+    const current = rows[0];
+    if (!current) throw new HttpError(404, 'Group not found');
+    if (current.leader_id !== req.user.id && current.created_by !== req.user.id) {
+      throw new HttpError(403, 'Only the current group leader or creator can transfer leadership');
+    }
+
+    const { rows: members } = await client.query(
+      'SELECT 1 FROM group_members WHERE group_id = $1 AND user_id = $2',
+      [groupId, leaderId],
+    );
+    if (!members[0]) {
+      throw new HttpError(400, 'The new leader must be a member of the group');
+    }
+
+    const { rows: updated } = await client.query(
+      `UPDATE groups SET leader_id = $1 WHERE id = $2
+       RETURNING id, name, created_by, leader_id, created_at`,
+      [leaderId, groupId],
+    );
+    return updated[0];
+  });
+
+  return res.json({ group });
+}
+
 export async function removeMember(req, res) {
   const groupId = validUuid(req.params.groupId, 'groupId');
   const userId = validUuid(req.params.userId, 'userId');
 
   const { rows: groups } = await query(
-    'SELECT created_by FROM groups WHERE id = $1',
+    'SELECT created_by, leader_id FROM groups WHERE id = $1',
     [groupId],
   );
   if (!groups[0]) throw new HttpError(404, 'Group not found');
-  if (groups[0].created_by !== req.user.id) {
-    throw new HttpError(403, 'Only the group creator can remove members');
+  if (groups[0].created_by !== req.user.id && groups[0].leader_id !== req.user.id) {
+    throw new HttpError(403, 'Only the group leader or creator can remove members');
+  }
+  if (groups[0].leader_id === userId) {
+    throw new HttpError(400, 'Transfer group leadership before removing the current leader');
   }
 
   const { rowCount } = await query(

@@ -11,8 +11,8 @@ const router = Router();
 
 router.use(authenticate);
 router.get('/', listAssignments);
-router.post('/', authorizeRoles('admin'), createAssignment);
-router.put('/:id', authorizeRoles('admin'), updateAssignment);
-router.delete('/:id', authorizeRoles('admin'), deleteAssignment);
+router.post('/', authorizeRoles('professor', 'admin'), createAssignment);
+router.put('/:id', authorizeRoles('professor', 'admin'), updateAssignment);
+router.delete('/:id', authorizeRoles('professor', 'admin'), deleteAssignment);
 
 export default router;

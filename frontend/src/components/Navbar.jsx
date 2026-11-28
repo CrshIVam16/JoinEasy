@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { Check, Copy, LogOut, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext.jsx';
+import { dashboardPathForRole, useAuth } from '../context/AuthContext.jsx';
 
 export default function Navbar() {
   const { user, logout } = useAuth();
   const [copyState, setCopyState] = useState('idle');
   const isStudent = user?.role === 'student';
+  const isProfessor = user?.role === 'professor';
 
   async function copyStudentCode() {
     if (!user?.student_code) return;
@@ -23,7 +24,7 @@ export default function Navbar() {
   return (
     <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
-        <Link to={isStudent ? '/student' : '/admin'} className="flex items-center gap-3">
+        <Link to={dashboardPathForRole(user?.role)} className="flex items-center gap-3">
           <span className="grid size-10 place-items-center rounded-2xl bg-indigo-600 text-white shadow-lg shadow-indigo-200">
             <Sparkles size={19} />
           </span>
@@ -51,8 +52,8 @@ export default function Navbar() {
           <span className={`inline-flex rounded-full px-2 py-1.5 text-[10px] font-bold sm:px-3 sm:text-xs ${
             isStudent ? 'bg-sky-50 text-sky-700' : 'bg-violet-50 text-violet-700'
           }`}>
-            <span className="sm:hidden">{isStudent ? 'Student' : 'Admin'}</span>
-            <span className="hidden sm:inline">{isStudent ? 'Student' : 'Professor / Admin'}</span>
+            <span className="sm:hidden">{isStudent ? 'Student' : isProfessor ? 'Professor' : 'Prof/Admin'}</span>
+            <span className="hidden sm:inline">{isStudent ? 'Student' : isProfessor ? 'Professor' : 'Professor (Admin)'}</span>
           </span>
           {isStudent && user.student_code && (
             <button

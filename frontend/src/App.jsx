@@ -1,10 +1,10 @@
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { LoaderCircle } from 'lucide-react';
-import { AuthProvider, useAuth } from './context/AuthContext.jsx';
+import { AuthProvider, dashboardPathForRole, useAuth } from './context/AuthContext.jsx';
 import Navbar from './components/Navbar.jsx';
 import AuthPage from './pages/AuthPage.jsx';
 import StudentDashboard from './pages/StudentDashboard.jsx';
-import AdminDashboard from './pages/AdminDashboard.jsx';
+import ProfessorDashboard from './pages/ProfessorDashboard.jsx';
 
 function PageLoader() {
   return (
@@ -21,17 +21,17 @@ function HomeRedirect() {
   const { user, loading } = useAuth();
   if (loading) return <PageLoader />;
   if (!user) return <Navigate to="/login" replace />;
-  return <Navigate to={user.role === 'admin' ? '/admin' : '/student'} replace />;
+  return <Navigate to={dashboardPathForRole(user.role)} replace />;
 }
 
-function ProtectedRoute({ role, children }) {
+function ProtectedRoute({ roles, children }) {
   const { user, loading } = useAuth();
   const location = useLocation();
 
   if (loading) return <PageLoader />;
   if (!user) return <Navigate to="/login" replace state={{ from: location }} />;
-  if (user.role !== role) {
-    return <Navigate to={user.role === 'admin' ? '/admin' : '/student'} replace />;
+  if (!roles.includes(user.role)) {
+    return <Navigate to={dashboardPathForRole(user.role)} replace />;
   }
 
   return (
@@ -45,7 +45,7 @@ function ProtectedRoute({ role, children }) {
 function AuthRoute() {
   const { user, loading } = useAuth();
   if (loading) return <PageLoader />;
-  if (user) return <Navigate to={user.role === 'admin' ? '/admin' : '/student'} replace />;
+  if (user) return <Navigate to={dashboardPathForRole(user.role)} replace />;
   return <AuthPage />;
 }
 
@@ -55,10 +55,13 @@ function AppRoutes() {
       <Route path="/" element={<HomeRedirect />} />
       <Route path="/login" element={<AuthRoute />} />
       <Route path="/student" element={
-        <ProtectedRoute role="student"><StudentDashboard /></ProtectedRoute>
+        <ProtectedRoute roles={['student']}><StudentDashboard /></ProtectedRoute>
+      } />
+      <Route path="/professor" element={
+        <ProtectedRoute roles={['professor']}><ProfessorDashboard /></ProtectedRoute>
       } />
       <Route path="/admin" element={
-        <ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>
+        <ProtectedRoute roles={['admin']}><ProfessorDashboard /></ProtectedRoute>
       } />
       <Route path="*" element={<HomeRedirect />} />
     </Routes>

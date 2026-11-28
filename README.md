@@ -1,186 +1,191 @@
+# Joineazy – Role-Based Course, Group & Assignment Management System (Task 2)
 
-# Joineazy – Student, Group & Assignment Management System
+Joineazy is a full-stack web application built with React, Tailwind CSS, Node.js, Express, and PostgreSQL. It streamlines course enrollment, project group formation, individual and group assignment workflows, group-leader-only submission acknowledgments, and real-time professor analytics.
 
-Joineazy is a role-based full-stack web application designed to simplify student group management, assignment distribution, and submission tracking.
+## Live Links
 
-Students can create project groups, manage teammates, access OneDrive assignment links, and confirm submissions through a two-step verification process. Professors (admins) can create and manage assignments, target specific groups or all students, and monitor submission progress through an analytics dashboard.
+- **Live Application:** https://join-easy-zeta.vercel.app/login
+- **GitHub Repository:** https://github.com/CrshIVam16/JoinEasy
+- **Demo Video:** Add your Task 2 walkthrough video link here.
 
 ---
 
 ## Table of Contents
 
-1. Overview & Core Features
-2. Tech Stack
-3. System Architecture & Data Flow
-4. Database Schema & ER Diagram
-5. Project Structure
-6. Setup & Installation
-7. API Endpoint Reference
-8. Key Design & Deployment Decisions
+1. [Overview & Core Features](#1-overview--core-features)
+2. [UI/UX Design Choices](#2-uiux-design-choices)
+3. [Tech Stack](#3-tech-stack)
+4. [System Architecture & Data Flow](#4-system-architecture--data-flow)
+5. [Database Schema & ER Diagram](#5-database-schema--er-diagram)
+6. [Project Structure](#6-project-structure)
+7. [Setup & Installation](#7-setup--installation)
+8. [API Endpoint Reference](#8-api-endpoint-reference)
+9. [Screenshots & UI Flow](#9-screenshots--ui-flow)
 
 ---
 
 ## 1. Overview & Core Features
 
-Joineazy provides separate functionalities for students and professors (admins), ensuring efficient collaboration and assignment management.
+Joineazy provides dedicated, role-protected workspaces for **Students** and **Professors** using JWT authentication.
 
 ### Student Role (`student`)
 
-- **Authentication & Student ID:** Register and log in using JWT-based authentication. Every student automatically receives a unique, human-readable student ID (`STU-XXXX`) alongside their email address.
-- **Group Management:** Create project groups, add classmates using their email or `STU-XXXX` identifier, view team members, and remove members (group creator only).
-- **Assignment Discovery & OneDrive Access:** View assignments targeted at all students or specifically assigned to the student's groups, with direct access to external OneDrive submission links.
-- **Two-Step Submission Verification:**
-  1. **Step 1 – Upload Declaration:** Confirm that the group's deliverable has been uploaded to the provided OneDrive link.
-  2. **Step 2 – Final Confirmation:** Select the target group (if enrolled in multiple groups), optionally provide a submission note, and confirm the submission.
-- **Submission Tracking:** Store submission details, including the confirming student's ID (`confirmed_by`) and submission timestamp (`submitted_at`).
-- **Visual Progress Tracking:** View progress bars and completion counters showing assigned, completed, and pending assignments across groups.
+- **Authentication & Student ID:** Register and log in using JWT-based authentication with client-side validation, loading states, and error feedback. Each student receives a unique human-readable code (`STU-XXXX`).
+- **Enrolled Courses Grid:** View enrolled courses in a responsive card grid displaying course code, title, instructor, and assignment count. Students can enroll using a course code or UUID and click any course card to filter its assignments.
+- **Group Management & Leadership:** Create project groups (automatically assigning the creator as the **Group Leader**), add teammates using their email or `STU-XXXX`, transfer leadership, and remove members.
+- **Individual & Group Assignments:** View assignments labeled by course and submission type (`Individual` or `Group`), along with deadlines, status badges, and animated progress bars.
+- **Group-Leader-Only Acknowledgment:**
+  - For **Group** assignments, only the Group Leader can acknowledge a group submission. Other members see a notice explaining that acknowledgment is restricted to the leader.
+  - Once acknowledged by the leader, the `Acknowledged` status is reflected across all members of that group.
+  - For **Individual** assignments, each student submits and acknowledges their own work independently.
 
-### Professor / Admin Role (`admin`)
+### Professor Role (`professor` / `admin`)
 
-- **Assignment Management:** Create, update, and delete assignments with a title, description, due date, OneDrive submission URL, and target scope.
-- **Flexible Assignment Targeting:** Assign work to all students or select specific groups.
-- **Analytics Dashboard:** Monitor key metrics, including:
-  - Total assignments
-  - Total groups
-  - Total submissions
-  - Overall completion percentage
-- **Group-Wise & Student-Wise Tracking:** View submission statuses for target groups, including student names, student IDs, and submitted or pending status.
-- **Assignment Progress:** Monitor completion percentages and submission progress for individual assignments.
+- **Course & Enrollment Management:** Create courses with a code, title, and description. Enroll students using their email, `STU-XXXX`, or UUID, and monitor enrolled student counts and submission totals per course.
+- **Assignment Management:** Create, edit, and delete assignments linked to specific courses, with `Individual` or `Group` submission types, deadlines, and target scopes.
+- **Submission Monitoring & Filtering:** Filter submissions by course and status (`All`, `Pending`, `Submitted`, `Acknowledged`) with stacked progress bars and per-group or per-student status breakdowns.
 
 ---
 
-## 2. Tech Stack
+## 2. UI/UX Design Choices
 
-| Layer            | Technology                                                         |
-| ---------------- | ------------------------------------------------------------------ |
-| Frontend         | React 19, Vite, Tailwind CSS v4, React Router, Axios, Lucide Icons |
-| Backend          | Node.js, Express.js, ES Modules                                    |
-| Database         | PostgreSQL 15+, Neon Serverless PostgreSQL                         |
-| Authentication   | JSON Web Tokens (JWT), bcryptjs                                    |
-| Database Driver  | pg (node-postgres)                                                 |
-| Containerization | Docker, Docker Compose                                             |
+- **Role-Specific Workspaces:** Separate `/student` and `/professor` dashboards prevent interface clutter and display role-relevant actions immediately after login.
+- **Responsive Card Grids:** Enrolled courses, taught courses, and assignment trackers adapt across desktop, tablet, and mobile screens using Tailwind CSS grid layouts.
+- **Clear Status & Permission Hierarchy:** Color-coded badges (`Group`, `Individual`, `Pending`, `Submitted`, `Acknowledged`, `Leader`) and stacked progress bars communicate progress at a glance.
+- **Explicit Permission Feedback:** Inline notices explain why only group leaders can acknowledge group submissions.
+- **Immediate Visual Feedback:** Form validation messages, button loading states, toast alerts, and smooth progress-bar transitions make application interactions clear and predictable.
 
 ---
 
-## 3. System Architecture & Data Flow
+## 3. Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Frontend | React 19, Vite, Tailwind CSS v4, React Router, Axios, Lucide Icons |
+| Backend | Node.js, Express.js, ES Modules |
+| Database | PostgreSQL 15+ (Neon Serverless PostgreSQL) |
+| Authentication | JSON Web Tokens (JWT), bcryptjs |
+| Database Driver | `pg` (node-postgres) |
+| Containerization | Docker, Docker Compose |
+
+---
+
+## 4. System Architecture & Data Flow
 
 Joineazy follows a three-tier architecture consisting of a React frontend, an Express.js backend, and a PostgreSQL database.
 
 ### Architecture Overview
 
-```
+```text
 +---------------------------------------------------------------+
 |                    CLIENT (React + Vite)                      |
 |                                                               |
-|  - AuthPage (Login / Register)                                |
-|  - StudentDashboard (Groups, Assignments, Submissions)        |
-|  - AdminDashboard (Assignment Management, Analytics)          |
+|  - AuthPage (Login / Register with validation & loaders)      |
+|  - StudentDashboard (Courses, Groups, Leader Acknowledgment)  |
+|  - ProfessorDashboard (Courses, Assignments, Status Filters)  |
 +------------------------------+--------------------------------+
                                |
                                |
-                     HTTPS / REST JSON
-                       Bearer JWT
+                   HTTPS / REST JSON (Bearer JWT)
                                |
                                v
 +---------------------------------------------------------------+
 |                  API SERVER (Node.js + Express)               |
 |                                                               |
-|  - CORS & JSON Body Parser                                    |
-|  - JWT Authentication & Role-Based Authorization              |
-|  - Controllers (Auth, Groups, Assignments, Submissions)       |
-|  - Transactional SQL Queries                                  |
-|  - PostgreSQL Connection Pool                                 |
+|  - JWT Authentication & Role Authorization Middleware         |
+|  - Controllers (Auth, Courses, Groups, Assignments,           |
+|                 Submissions & Acknowledgment)                 |
+|  - Transactional SQL Queries (`pg` Pool)                      |
 +------------------------------+--------------------------------+
                                |
                                |
-                       TLS / TCP (pg)
+                          TLS / TCP (pg)
                                |
                                v
 +---------------------------------------------------------------+
 |                    DATABASE (PostgreSQL)                      |
 |                                                               |
-|  - users                                                     |
-|  - groups                                                    |
-|  - group_members                                             |
-|  - assignments                                               |
-|  - assignment_groups                                         |
-|  - submissions                                               |
+|  - users                - courses                             |
+|  - course_enrollments   - groups                              |
+|  - group_members        - assignments                         |
+|  - assignment_groups    - submissions                         |
 +---------------------------------------------------------------+
 ```
 
-### End-to-End Submission Flow
+### End-to-End Workflow
 
-1. **Assignment Creation:** An admin creates an assignment, provides a OneDrive submission URL, and selects either all groups or specific target groups.
-2. **Group Formation:** Students create project groups and add teammates using their email addresses or student IDs.
-3. **File Upload:** Students upload their group's deliverable to the provided OneDrive link.
-4. **Submission Confirmation:** A student completes the two-step submission verification process.
-5. **Backend Validation:** The backend validates group membership, assignment eligibility, and both confirmation flags within a PostgreSQL transaction.
-6. **Submission Recording:** The system stores the confirmation details and submission timestamp.
-7. **Admin Monitoring:** The admin dashboard displays updated submission statuses, group details, and completion percentages.
+1. **Course & Assignment Setup:** A professor creates courses, enrolls students (or shares the course code/UUID), and posts Individual or Group assignments linked to each course.
+2. **Team & Enrollment Setup:** Students enroll in courses, form groups, and add teammates using email addresses or `STU-XXXX` codes.
+3. **Submission & Leader Acknowledgment:** Students submit their work. For group assignments, the backend checks `groups.leader_id === req.user.id` before allowing acknowledgment across the entire group.
+4. **Live Analytics:** The professor dashboard aggregates course, assignment, group, and student statuses with real-time filters.
 
 ---
 
-## 4. Database Schema & ER Diagram
+## 5. Database Schema & ER Diagram
 
-The relational database schema is defined in `backend/schema.sql`.
-
-It uses UUID primary keys, foreign-key relationships, cascading operations, and composite UNIQUE constraints to maintain data integrity and prevent duplicate memberships or submissions.
+The database uses UUID primary keys, foreign-key constraints, and unique indexes across eight relational tables, defined in `backend/schema.sql`.
 
 ### Database Tables
 
-| Table               | Description                                                                    |
-| ------------------- | ------------------------------------------------------------------------------ |
-| `users`             | Stores user information, authentication details, roles, and student IDs.       |
-| `groups`            | Stores project group details and creator information.                          |
-| `group_members`     | Manages the many-to-many relationship between students and groups.             |
-| `assignments`       | Stores assignment details, deadlines, OneDrive links, and creator information. |
-| `assignment_groups` | Connects assignments with their targeted groups.                               |
-| `submissions`       | Records group submission confirmations, notes, and timestamps.                 |
+| Table | Description |
+|---|---|
+| `users` | Stores user profiles, hashed passwords, roles (`student`, `professor`, `admin`), and `student_code`. |
+| `courses` | Stores course details such as code, title, and description, linked to `professor_id`. |
+| `course_enrollments` | Many-to-many join table associating students with enrolled courses. |
+| `groups` | Stores project groups, their creators (`created_by`), and leaders (`leader_id`). |
+| `group_members` | Many-to-many join table connecting students with groups. |
+| `assignments` | Stores assignment metadata, `course_id`, `due_date`, `target_type`, and `submission_type`. |
+| `assignment_groups` | Maps group-targeted assignments to specific groups. |
+| `submissions` | Tracks individual or group submissions, status, confirming users, acknowledgment details, and timestamps. |
 
 ### Entity Relationship Diagram
 
-```
+```text
 +--------------------+       +--------------------+       +--------------------+
-|       users        |       |   group_members    |       |       groups       |
+|       users        |       | course_enrollments |       |      courses       |
 +--------------------+       +--------------------+       +--------------------+
-| PK id (UUID)       |<------| FK user_id         |       | PK id (UUID)       |
-| name               |       | FK group_id        |------>| name               |
-| email (UNIQUE)     |       | joined_at          |       | FK created_by      |
-| password_hash      |       +--------------------+       | created_at         |
-| role               |                                    +--------------------+
-| student_code       |
-| created_at         |
-+--------------------+
-         |
-         | created_by / confirmed_by
-         |
-         v
+| PK id (UUID)       |<------| FK student_id      |   +-->| PK id (UUID)       |
+| name               |       | FK course_id       |---+   | code (UNIQUE)      |
+| email (UNIQUE)     |       | enrolled_at        |       | title              |
+| password_hash      |       +--------------------+       | description        |
+| role               |                                    | FK professor_id    |
+| student_code       |       +--------------------+       | created_at         |
+| created_at         |       |   group_members    |       +--------------------+
++--------------------+       +--------------------+                |
+         |                   | FK user_id         |                |
+         +------------------>| FK group_id        |---+            |
+         |                   | joined_at          |   |            |
+         |                   +--------------------+   v            |
+         |                                        +--------------------+
+         |                                        |       groups       |
+         |                                        +--------------------+
+         |                                        | PK id (UUID)       |
+         |                                        | name               |
+         |                                        | FK created_by      |
+         |                                        | FK leader_id       |
+         |                                        +--------------------+
+         |                                                 |
+         v                                                 v
++--------------------+       +--------------------+       +--------------------+
+|    assignments     |       |    submissions     |       | assignment_groups  |
++--------------------+       +--------------------+       +--------------------+
+| PK id (UUID)       |<------| FK assignment_id   |   +-->| FK assignment_id   |
+| title              |       | FK group_id        |---+   | FK group_id        |
+| description        |       | FK student_id      |       +--------------------+
+| due_date           |       | FK confirmed_by    |
+| submission_type    |       | status             |
+| target_type        |       | FK acknowledged_by |
+| FK course_id       |       | acknowledged_at    |
+| FK created_by      |       | submitted_at       |
 +--------------------+       +--------------------+
-|    assignments    |       | assignment_groups  |
-+--------------------+       +--------------------+
-| PK id (UUID)       |<------| FK assignment_id   |
-| title              |       | FK group_id        |
-| description        |       +--------------------+
-| due_date           |
-| onedrive_link      |       +--------------------+
-| target_type        |       |    submissions     |
-| FK created_by      |       +--------------------+
-| created_at         |<------| FK assignment_id   |
-+--------------------+       | FK group_id        |
-                             | FK confirmed_by    |
-                             | step_one_intent    |
-                             | step_two_confirmed |
-                             | submission_note    |
-                             | submitted_at       |
-                             +--------------------+
 ```
 
 ---
 
-## 5. Project Structure
+## 6. Project Structure
 
-```
-joineazy-task1/
+```text
+JoinEasy/
 │
 ├── backend/
 │   ├── Dockerfile
@@ -199,12 +204,14 @@ joineazy-task1/
 │       │
 │       ├── controllers/
 │       │   ├── authController.js
+│       │   ├── courseController.js
 │       │   ├── groupController.js
 │       │   ├── assignmentController.js
 │       │   └── submissionController.js
 │       │
 │       ├── routes/
 │       │   ├── authRoutes.js
+│       │   ├── courseRoutes.js
 │       │   ├── groupRoutes.js
 │       │   ├── assignmentRoutes.js
 │       │   └── submissionRoutes.js
@@ -231,7 +238,7 @@ joineazy-task1/
 │       └── pages/
 │           ├── AuthPage.jsx
 │           ├── StudentDashboard.jsx
-│           └── AdminDashboard.jsx
+│           └── ProfessorDashboard.jsx
 │
 ├── docker-compose.yml
 └── README.md
@@ -239,9 +246,9 @@ joineazy-task1/
 
 ---
 
-## 6. Setup & Installation
+## 7. Setup & Installation
 
-Follow these instructions to run Joineazy locally or using Docker.
+Follow these instructions to run Joineazy locally.
 
 ### Prerequisites
 
@@ -249,40 +256,38 @@ Make sure you have the following installed:
 
 - Node.js v20 or later
 - npm
-- PostgreSQL 15+ (local installation or a cloud database such as Neon)
-- Docker and Docker Compose (optional, for containerized execution)
+- PostgreSQL 15+ (local installation or Neon Serverless PostgreSQL)
+- Docker and Docker Compose (optional)
 
-### Option A: Run Locally (Development Mode)
+### Step 1: Clone the Repository
 
-#### Step 1: Clone the Repository
-
-```
+```bash
 git clone https://github.com/CrshIVam16/JoinEasy.git
-cd joineazy-task1
+cd JoinEasy
 ```
 
-#### Step 2: Initialize the Database
+### Step 2: Initialize the Database
 
-Execute the SQL script located at:
+Run the SQL script located at:
 
-```
+```text
 backend/schema.sql
 ```
 
-Run it against your PostgreSQL database to create the required tables, constraints, and indexes.
+Execute it in your PostgreSQL database or Neon SQL Editor to create the required tables, constraints, and indexes.
 
-#### Step 3: Configure the Backend
+### Step 3: Configure and Start the Backend
 
 Navigate to the backend directory:
 
-```
+```bash
 cd backend
 npm install
 ```
 
 Create a `.env` file inside the `backend` directory:
 
-```
+```env
 PORT=5000
 DATABASE_URL=postgresql://<user>:<password>@<host>/<dbname>?sslmode=require
 JWT_SECRET=replace_with_a_strong_secret_key
@@ -290,195 +295,97 @@ JWT_SECRET=replace_with_a_strong_secret_key
 
 Replace the database credentials and JWT secret with your actual values.
 
-#### Step 4: Start the Backend Server
+Start the backend server:
 
-```
+```bash
 npm run dev
 ```
 
-The backend API should now be available at:
+Verify the backend using:
 
-```
-http://localhost:5000
-```
-
-Verify the server using the health-check endpoint:
-
-```
+```text
 http://localhost:5000/api/health
 ```
 
-#### Step 5: Configure and Start the Frontend
+### Step 4: Configure and Start the Frontend
 
 Open a new terminal and navigate to the frontend directory:
 
-```
+```bash
 cd frontend
 npm install
 ```
 
-If you are using a non-default API URL, create a `.env` file inside the `frontend` directory:
+Optionally, create a `.env` file inside the `frontend` directory:
 
-```
+```env
 VITE_API_URL=http://localhost:5000/api
 ```
 
 Start the frontend development server:
 
-```
+```bash
 npm run dev
 ```
 
 Open the application in your browser:
 
-```
+```text
 http://localhost:5173
-```
-
-### Option B: Run Using Docker Compose
-
-Make sure Docker and Docker Compose are installed and the backend environment variables are configured.
-
-From the project root directory, run:
-
-```
-docker compose up --build
-```
-
-This builds and starts the application containers.
-
-Default access URLs:
-
-| Service                  | URL                                                                  |
-| ------------------------ | -------------------------------------------------------------------- |
-| Frontend                 | [http://localhost:5173](http://localhost:5173)                       |
-| Backend API Health Check | [http://localhost:5000/api/health](http://localhost:5000/api/health) |
-
-The actual port mappings depend on your `docker-compose.yml` configuration.
-
-To stop the containers:
-
-```
-docker compose down
 ```
 
 ---
 
-## 7. API Endpoint Reference
+## 8. API Endpoint Reference
 
-All protected API routes require JWT authentication through the following HTTP header:
+All protected routes require JWT authentication through the following HTTP header:
 
-```
+```http
 Authorization: Bearer <token>
 ```
 
 ### Authentication (`/api/auth`)
 
-| Method | Endpoint             | Access        | Description                                                           |
-| ------ | -------------------- | ------------- | --------------------------------------------------------------------- |
-| POST   | `/api/auth/register` | Public        | Register a student or admin. Student IDs are generated automatically. |
-| POST   | `/api/auth/login`    | Public        | Authenticate a user and return a JWT with profile information.        |
-| GET    | `/api/auth/me`       | Authenticated | Retrieve the currently logged-in user's profile.                      |
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| POST | `/api/auth/register` | Public | Register a student or professor account. |
+| POST | `/api/auth/login` | Public | Authenticate and return a JWT with user profile information. |
+| GET | `/api/auth/me` | Authenticated | Fetch the currently authenticated user's details. |
+
+### Courses (`/api/courses`)
+
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| GET | `/api/courses` | Authenticated | List taught courses (Professor) or enrolled courses (Student). |
+| POST | `/api/courses` | Professor | Create a new course with code, title, and description. |
+| POST | `/api/courses/:courseId/enroll` | Authenticated | Enroll a student using email, `STU-XXXX`, or UUID. |
 
 ### Groups (`/api/groups`)
 
-| Method | Endpoint                               | Access  | Description                                                       |
-| ------ | -------------------------------------- | ------- | ----------------------------------------------------------------- |
-| POST   | `/api/groups`                          | Student | Create a new group and automatically enroll its creator.          |
-| GET    | `/api/groups/my`                       | Student | Retrieve groups the student belongs to, including member details. |
-| GET    | `/api/groups`                          | Admin   | Retrieve all groups and their member details.                     |
-| POST   | `/api/groups/:groupId/members`         | Student | Add a student using their email or `STU-XXXX` code.               |
-| DELETE | `/api/groups/:groupId/members/:userId` | Student | Remove a group member (group creator only).                       |
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| POST | `/api/groups` | Student | Create a group and set its creator as `leader_id`. |
+| GET | `/api/groups/my` | Student | List groups the student belongs to, including member details. |
+| GET | `/api/groups` | Professor | List all groups and their members. |
+| POST | `/api/groups/:groupId/members` | Student | Add a teammate using email or `STU-XXXX`. |
+| PATCH | `/api/groups/:groupId/leader` | Student | Transfer group leadership to another member. |
+| DELETE | `/api/groups/:groupId/members/:userId` | Student | Remove a group member (leader/creator only). |
 
 ### Assignments (`/api/assignments`)
 
-| Method | Endpoint               | Access        | Description                                                                    |
-| ------ | ---------------------- | ------------- | ------------------------------------------------------------------------------ |
-| POST   | `/api/assignments`     | Admin         | Create an assignment targeting all students or specific groups.                |
-| PUT    | `/api/assignments/:id` | Admin         | Update assignment details or target groups.                                    |
-| DELETE | `/api/assignments/:id` | Admin         | Delete an assignment and its associated target and submission records.         |
-| GET    | `/api/assignments`     | Authenticated | Retrieve role-specific assignments and associated analytics or group statuses. |
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| POST | `/api/assignments` | Professor | Create an individual or group assignment linked to a course. |
+| PUT | `/api/assignments/:id` | Professor | Update assignment details, course link, or target groups. |
+| DELETE | `/api/assignments/:id` | Professor | Delete an assignment and its dependent records. |
+| GET | `/api/assignments` | Authenticated | Retrieve assignments filtered by role and optional `?courseId=`. |
 
-### Submissions & Analytics (`/api/submissions`)
+### Submissions & Acknowledgments (`/api/submissions`)
 
-| Method | Endpoint                     | Access  | Description                                                                 |
-| ------ | ---------------------------- | ------- | --------------------------------------------------------------------------- |
-| POST   | `/api/submissions/confirm`   | Student | Record a group submission through the two-step verification process.        |
-| GET    | `/api/submissions/analytics` | Admin   | Retrieve dashboard KPIs, assignment breakdowns, and group completion rates. |
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| POST | `/api/submissions/confirm` | Student | Submit an individual or group assignment. |
+| POST | `/api/submissions/acknowledge` | Student | Acknowledge a submission (restricted to the group leader for group assignments). |
+| GET | `/api/submissions/analytics` | Professor | Retrieve KPIs and submissions filterable by `?courseId=` and `?status=`. |
 
----
-
-## 8. Key Design & Deployment Decisions
-
-### 1. Group-Scoped Submission Model
-
-Submissions are tracked using the combination of `assignment_id` and `group_id`, rather than individual student submissions.
-
-A unique constraint:
-
-```
-UNIQUE (assignment_id, group_id)
-```
-
-ensures that each group has only one submission record for a particular assignment.
-
-Since students collaborate on a shared deliverable, any eligible group member can confirm the submission. The system also records `confirmed_by` and `submitted_at` to maintain individual accountability.
-
-### 2. Transactional Data Integrity
-
-Operations involving multiple database tables use explicit PostgreSQL transactions:
-
-```
-BEGIN;
-COMMIT;
-ROLLBACK;
-```
-
-Examples include:
-
-- Creating a group and enrolling its creator.
-- Updating assignment targets in `assignment_groups`.
-- Confirming a two-step group submission.
-
-This prevents partially completed database operations and helps maintain consistent data.
-
-### 3. SQL CTE-Driven Analytics
-
-The `/api/submissions/analytics` endpoint uses Common Table Expressions (CTEs) to calculate assignment targets and submission statistics.
-
-For example:
-
-```
-WITH targets AS (...)
-```
-
-This approach dynamically resolves assignments targeting all groups or specific groups and calculates completion percentages using the correct target counts.
-
-### 4. Stateless JWT Authentication
-
-The application uses signed JSON Web Tokens for authentication.
-
-Route-level middleware handles:
-
-- JWT verification.
-- User authentication.
-- Role-based authorization.
-- Access restrictions for student and admin routes.
-
-This keeps authentication separate from business logic and supports a scalable backend architecture.
-
-### 5. Docker-Based Deployment
-
-Docker and Docker Compose are used to containerize the frontend and backend services.
-
-The configuration supports:
-
-- Separate frontend and backend containers.
-- Multi-stage frontend builds.
-- Consistent development and deployment environments.
-- Simplified application startup and management.
-
-## Live Links
-* **Live Application:** https://join-easy-zeta.vercel.app/login
-* **Demo Video:** https://drive.google.com/file/d/10j1gnIyj0HpYv44efZvcQiLNpatzeO4b/view?usp=sharing
 ---

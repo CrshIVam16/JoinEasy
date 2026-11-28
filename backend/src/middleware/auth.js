@@ -21,7 +21,7 @@ export function authenticate(req, res, next) {
       typeof payload.id !== 'string' ||
       typeof payload.email !== 'string' ||
       typeof payload.name !== 'string' ||
-      !['student', 'admin'].includes(payload.role)
+      !['student', 'professor', 'admin'].includes(payload.role)
     ) {
       throw new HttpError(401, 'Invalid authentication token');
     }

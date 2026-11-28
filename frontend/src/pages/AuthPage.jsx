@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ArrowRight, BookOpenCheck, GraduationCap, LoaderCircle, ShieldCheck, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext.jsx';
+import { dashboardPathForRole, useAuth } from '../context/AuthContext.jsx';
 
 function errorMessage(error) {
   return error.response?.data?.error || error.message || 'Unable to sign in right now.';
@@ -18,16 +18,35 @@ export default function AuthPage() {
     role: 'student',
   });
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
   const [busy, setBusy] = useState(false);
   const isRegister = mode === 'register';
 
   function updateField(event) {
-    setForm((current) => ({ ...current, [event.target.name]: event.target.value }));
+    const { name, value } = event.target;
+    setForm((current) => ({ ...current, [name]: value }));
+    setFieldErrors((current) => ({ ...current, [name]: '' }));
+  }
+
+  function validate() {
+    const errors = {};
+    if (isRegister && !form.name.trim()) errors.name = 'Enter your name.';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+      errors.email = 'Enter a valid email address.';
+    }
+    if (!form.password) errors.password = 'Enter your password.';
+    else if (isRegister && form.password.length < 8) errors.password = 'Use at least 8 characters.';
+    if (isRegister && !['student', 'professor', 'admin'].includes(form.role)) {
+      errors.role = 'Choose a valid account type.';
+    }
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
   }
 
   async function submit(event) {
     event.preventDefault();
     setError('');
+    if (!validate()) return;
     setBusy(true);
     try {
       const user = isRegister
@@ -38,7 +57,7 @@ export default function AuthPage() {
             role: form.role,
           })
         : await login({ email: form.email.trim(), password: form.password });
-      navigate(user.role === 'admin' ? '/admin' : '/student', { replace: true });
+      navigate(dashboardPathForRole(user.role), { replace: true });
     } catch (requestError) {
       setError(errorMessage(requestError));
     } finally {
@@ -103,7 +122,7 @@ export default function AuthPage() {
               <button
                 key={tab}
                 type="button"
-                onClick={() => { setMode(tab); setError(''); }}
+                onClick={() => { setMode(tab); setError(''); setFieldErrors({}); }}
                 className={`rounded-lg px-4 py-2.5 text-sm font-bold capitalize transition ${
                   mode === tab ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
                 }`}
@@ -119,7 +138,7 @@ export default function AuthPage() {
             </div>
           )}
 
-          <form onSubmit={submit} className="space-y-4">
+          <form key={mode} noValidate onSubmit={submit} className="space-y-4 motion-enter">
             {isRegister && (
               <>
                 <label className="block">
@@ -134,14 +153,26 @@ export default function AuthPage() {
                     maxLength={120}
                     placeholder="Alex Morgan"
                     className="form-input"
+                    aria-invalid={Boolean(fieldErrors.name)}
+                    aria-describedby={fieldErrors.name ? 'name-error' : undefined}
                   />
+                  {fieldErrors.name && <span id="name-error" className="field-error">{fieldErrors.name}</span>}
                 </label>
                 <label className="block">
                   <span className="mb-1.5 block text-sm font-semibold text-slate-700">Account type</span>
-                  <select name="role" value={form.role} onChange={updateField} className="form-input">
+                  <select
+                    name="role"
+                    value={form.role}
+                    onChange={updateField}
+                    className="form-input"
+                    aria-invalid={Boolean(fieldErrors.role)}
+                    aria-describedby={fieldErrors.role ? 'role-error' : undefined}
+                  >
                     <option value="student">Student</option>
+                    <option value="professor">Professor</option>
                     <option value="admin">Professor (Admin)</option>
                   </select>
+                  {fieldErrors.role && <span id="role-error" className="field-error">{fieldErrors.role}</span>}
                 </label>
               </>
             )}
@@ -157,7 +188,10 @@ export default function AuthPage() {
                 maxLength={254}
                 placeholder="you@school.edu"
                 className="form-input"
+                aria-invalid={Boolean(fieldErrors.email)}
+                aria-describedby={fieldErrors.email ? 'email-error' : undefined}
               />
+              {fieldErrors.email && <span id="email-error" className="field-error">{fieldErrors.email}</span>}
             </label>
             <label className="block">
               <span className="mb-1.5 block text-sm font-semibold text-slate-700">Password</span>
@@ -172,7 +206,10 @@ export default function AuthPage() {
                 maxLength={128}
                 placeholder={isRegister ? 'At least 8 characters' : 'Enter your password'}
                 className="form-input"
+                aria-invalid={Boolean(fieldErrors.password)}
+                aria-describedby={fieldErrors.password ? 'password-error' : undefined}
               />
+              {fieldErrors.password && <span id="password-error" className="field-error">{fieldErrors.password}</span>}
             </label>
             <button
               type="submit"

@@ -4,6 +4,7 @@ import authRoutes from './routes/authRoutes.js';
 import groupRoutes from './routes/groupRoutes.js';
 import assignmentRoutes from './routes/assignmentRoutes.js';
 import submissionRoutes from './routes/submissionRoutes.js';
+import courseRoutes from './routes/courseRoutes.js';
 import { HttpError } from './utils/httpError.js';
 
 const app = express();
@@ -17,6 +18,7 @@ app.get('/api/health', (req, res) => {
 
 app.use('/api/auth', authRoutes);
 app.use('/api/groups', groupRoutes);
+app.use('/api/courses', courseRoutes);
 app.use('/api/assignments', assignmentRoutes);
 app.use('/api/submissions', submissionRoutes);
 
